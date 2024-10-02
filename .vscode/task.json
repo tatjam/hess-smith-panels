@@ -1,0 +1,42 @@
+{
+	"version": "0.2.0",
+	"configurations": [
+		{
+			"type": "lldb",
+			"request": "launch",
+			"name": "Debug executable 'hess-smith'",
+			"cargo": {
+				"args": [
+					"build",
+					"--bin=hess-smith",
+					"--package=hess-smith"
+				],
+				"filter": {
+					"name": "hess-smith",
+					"kind": "bin"
+				}
+			},
+			"args": [],
+			"cwd": "${workspaceFolder}"
+		},
+		{
+			"type": "lldb",
+			"request": "launch",
+			"name": "Debug unit tests in executable 'hess-smith'",
+			"cargo": {
+				"args": [
+					"test",
+					"--no-run",
+					"--bin=hess-smith",
+					"--package=hess-smith"
+				],
+				"filter": {
+					"name": "hess-smith",
+					"kind": "bin"
+				}
+			},
+			"args": [],
+			"cwd": "${workspaceFolder}"
+		}
+	]
+}
