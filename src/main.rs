@@ -4,13 +4,16 @@ extern crate std;
 #[macro_use]
 extern crate approx;
 
+mod aero;
 mod geom;
 mod plots;
 mod points;
 
+// Number of PANELS, point number is N + 1
 const N: usize = 70;
 const N_POINTS_UPPER: usize = N / 2 + 1;
 const N_POINTS_LOWER: usize = N / 2 + 1;
+const DO_PLOTS: bool = true;
 
 fn get_points() -> Vec<(f64, f64)> {
     let mut upper_resampled = geom::resample(&points::POINTS_UPPER, N_POINTS_UPPER);
@@ -30,5 +33,7 @@ fn main() {
     let points = get_points();
     assert_eq!(points.len(), N + 1);
 
-    plots::geom::plot(&points);
+    if DO_PLOTS {
+        plots::geom::plot(&points);
+    }
 }
