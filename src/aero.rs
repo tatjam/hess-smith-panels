@@ -16,8 +16,17 @@ impl Panel {
         let lx = self.end.0 - self.start.0;
         let ly = self.end.1 - self.start.1;
 
-        let sin_theta = lx / ((1.0 + (lx * lx) / (ly * ly)).sqrt() * ly);
-        let cos_theta = 1.0 / ((1.0 + (lx * lx) / (ly * ly)).sqrt());
+        // sin(arctan of (ly / lx)) approaches +- with lx approaching 0
+        let sin_theta = if lx == 0.0 {
+            if ly > 0.0 {
+                1.0
+            } else {
+                -1.0
+            }
+        } else {
+            ly / ((1.0 + (ly * ly) / (lx * lx)).sqrt() * lx)
+        };
+        let cos_theta = 1.0 / ((1.0 + (ly * ly) / (lx * lx)).sqrt());
         let ty = -p.0 * sin_theta + p.1 * cos_theta;
         if approx::relative_eq!(ty, 0.0) {
             return (0.0, 0.0);
@@ -59,6 +68,30 @@ mod test {
         };
 
         let vcenter = panel.source_vel_at((0.5, 0.0));
+        approx::assert_relative_eq!(vcenter.0, 0.0);
+        approx::assert_relative_eq!(vcenter.1, 0.0);
+    }
+
+    #[test]
+    fn test_panel_self_influence_null_tilted() {
+        let panel = Panel {
+            start: (1.5, 1.5),
+            end: (2.5, 2.5),
+        };
+
+        let vcenter = panel.source_vel_at((2.0, 2.0));
+        approx::assert_relative_eq!(vcenter.0, 0.0);
+        approx::assert_relative_eq!(vcenter.1, 0.0);
+    }
+
+    #[test]
+    fn test_panel_self_influence_null_vertical() {
+        let panel = Panel {
+            start: (0.0, 0.0),
+            end: (0.0, 1.0),
+        };
+
+        let vcenter = panel.source_vel_at((0.0, 0.5));
         approx::assert_relative_eq!(vcenter.0, 0.0);
         approx::assert_relative_eq!(vcenter.1, 0.0);
     }
