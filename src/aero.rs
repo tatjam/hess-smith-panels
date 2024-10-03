@@ -28,18 +28,19 @@ impl Panel {
         };
         let cos_theta = 1.0 / ((1.0 + (ly * ly) / (lx * lx)).sqrt());
         let ty = -p.0 * sin_theta + p.1 * cos_theta;
-        if approx::relative_eq!(ty, 0.0) {
-            return (0.0, 0.0);
-        }
 
         let vel_parallel = (rstart / rend).sqrt().ln();
         // TODO: Check if atan2 should be used
-        let vel_perp = -(len / ty).atan();
+        let vel_perp = if approx::relative_eq!(ty, 0.0) {
+            0.0
+        } else {
+            -(len / ty).atan()
+        };
 
         // Transform back
         (
             vel_parallel * cos_theta + vel_perp * sin_theta,
-            vel_perp * cos_theta - vel_parallel * sin_theta,
+            -vel_perp * cos_theta + vel_parallel * sin_theta,
         )
     }
 
@@ -94,5 +95,85 @@ mod test {
         let vcenter = panel.source_vel_at((0.0, 0.5));
         approx::assert_relative_eq!(vcenter.0, 0.0);
         approx::assert_relative_eq!(vcenter.1, 0.0);
+    }
+
+    #[test]
+    fn test_panel_logical() {
+        let panel = Panel {
+            start: (0.0, 0.0),
+            end: (1.0, 0.0),
+        };
+
+        let vtop = panel.source_vel_at((0.5, 1.0));
+        approx::assert_relative_eq!(vtop.0, 0.0);
+        assert!(vtop.1 > 0.0);
+
+        let vbottom = panel.source_vel_at((0.5, -1.0));
+        approx::assert_relative_eq!(vtop.0, 0.0);
+        assert!(vbottom.1 < 0.0);
+
+        let vtopright = panel.source_vel_at((1.0, 1.0));
+        assert!(vtopright.0 > 0.0);
+        assert!(vtopright.1 > 0.0);
+
+        let vtopleft = panel.source_vel_at((0.0, 1.0));
+        assert!(vtopleft.0 < 0.0);
+        assert!(vtopleft.1 > 0.0);
+
+        let vbottomleft = panel.source_vel_at((0.0, -1.0));
+        assert!(vbottomleft.0 < 0.0);
+        assert!(vbottomleft.1 < 0.0);
+
+        let vbottomright = panel.source_vel_at((1.0, -1.0));
+        assert!(vbottomright.0 > 0.0);
+        assert!(vbottomright.1 < 0.0);
+
+        let vleft = panel.source_vel_at((-1.0, 0.0));
+        approx::assert_relative_eq!(vleft.1, 0.0);
+        assert!(vleft.0 < 0.0);
+
+        let vright = panel.source_vel_at((2.0, 0.0));
+        approx::assert_relative_eq!(vright.1, 0.0);
+        assert!(vright.0 > 0.0);
+    }
+
+    #[test]
+    fn test_panel_logical_vertical() {
+        let panel = Panel {
+            start: (0.0, 0.0),
+            end: (0.0, 1.0),
+        };
+
+        let vleft = panel.source_vel_at((-1.0, 0.5));
+        approx::assert_relative_eq!(vleft.1, 0.0);
+        assert!(vleft.0 < 0.0);
+
+        let vright = panel.source_vel_at((1.0, 0.5));
+        approx::assert_relative_eq!(vright.1, 0.0);
+        assert!(vright.0 > 0.0);
+
+        let vtopright = panel.source_vel_at((1.0, 1.0));
+        assert!(vtopright.0 > 0.0);
+        assert!(vtopright.1 > 0.0);
+
+        let vtopleft = panel.source_vel_at((-1.0, 1.0));
+        assert!(vtopleft.0 < 0.0);
+        assert!(vtopleft.1 > 0.0);
+
+        let vbottomleft = panel.source_vel_at((-1.0, -1.0));
+        assert!(vbottomleft.0 < 0.0);
+        assert!(vbottomleft.1 < 0.0);
+
+        let vbottomright = panel.source_vel_at((1.0, -1.0));
+        assert!(vbottomright.0 > 0.0);
+        assert!(vbottomright.1 < 0.0);
+
+        let vtop = panel.source_vel_at((0.0, 2.0));
+        approx::assert_relative_eq!(vtop.0, 0.0);
+        assert!(vtop.1 > 0.0);
+
+        let vbottom = panel.source_vel_at((0.0, -1.0));
+        approx::assert_relative_eq!(vbottom.0, 0.0);
+        assert!(vbottom.1 < 0.0);
     }
 }
