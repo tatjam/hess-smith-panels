@@ -1,76 +1,34 @@
 extern crate faer as fa;
 extern crate std;
+
 #[macro_use]
 extern crate approx;
 
+mod geom;
+mod plots;
 mod points;
 
-/// Returns (min, max) pair
-fn find_x_extremes(pts: &[(f64, f64)]) -> (f64, f64) {
-    pts.iter()
-        .fold((999999999.0, -999999999.0), |(min, max), (x, _)| {
-            let nmin = if *x < min { *x } else { min };
-            let nmax = if *x > max { *x } else { max };
-            (nmin, nmax)
-        })
-}
+const N: usize = 70;
+const N_POINTS_UPPER: usize = N / 2 + 1;
+const N_POINTS_LOWER: usize = N / 2 + 1;
 
-/// Cosine sampling is used, to accumulate points near the leading and trialing edges
-/// desired_n is the number of points to be placed
-/// Always keeps first and last points the same
-fn resample(pts: &[(f64, f64)], desired_n: usize) -> Vec<(f64, f64)> {
-    let out: Vec<(f64, f64)> = Vec::new();
+fn get_points() -> Vec<(f64, f64)> {
+    let mut upper_resampled = geom::resample(&points::POINTS_UPPER, N_POINTS_UPPER);
+    upper_resampled.reverse();
+    let mut lower_resampled = geom::resample(&points::POINTS_LOWER, N_POINTS_LOWER);
 
-    for n in 0..desired_n {}
+    approx::assert_relative_eq!(upper_resampled[0].0, lower_resampled.last().unwrap().0);
+    approx::assert_relative_eq!(upper_resampled[0].1, lower_resampled.last().unwrap().1);
 
-    return out;
+    // combine both, erasing shared element
+    lower_resampled.pop();
+
+    [upper_resampled, lower_resampled].concat()
 }
 
 fn main() {
-    println!("Hello, world!");
-}
+    let points = get_points();
+    assert_eq!(points.len(), N + 1);
 
-#[cfg(test)]
-mod test {
-    use approx::relative_eq;
-
-    use super::*;
-
-    #[test]
-    fn test_x_extremes() {
-        let (min, max) = find_x_extremes(&[
-            (132.0, 3.0),
-            (-2.0, 1.0),
-            (-43.0, 3.0),
-            (137.0, 3.0),
-            (137.0, -543.0),
-        ]);
-        assert_eq!(min, -43.0);
-        assert_eq!(max, 137.0);
-    }
-
-    #[test]
-    fn test_resample() {
-        use std::f64::*;
-
-        const N: usize = 10;
-        let resampled1 = resample(&[(0.0, 0.0), (1.0, 1.0)], N);
-        let resampled2 = resample(&[(0.0, 0.0), (0.5, 0.5), (1.0, 1.0)], N);
-        let resampled3 = resample(&[(0.0, 0.0), (0.1, 0.1), (0.65, 0.65), (1.0, 1.0)], N);
-
-        assert_eq!(resampled1.len(), N);
-        assert_eq!(resampled2.len(), N);
-        assert_eq!(resampled3.len(), N);
-
-        for t in 0..N {
-            let theta = (t as f64) / (N as f64 - 1.0);
-            let v = 0.5 * (1.0 - f64::cos(consts::PI * theta));
-            relative_eq!(resampled1[t].0, v);
-            relative_eq!(resampled1[t].1, v);
-            relative_eq!(resampled2[t].0, v);
-            relative_eq!(resampled2[t].1, v);
-            relative_eq!(resampled3[t].0, v);
-            relative_eq!(resampled3[t].1, v);
-        }
-    }
+    plots::geom::plot(&points);
 }
