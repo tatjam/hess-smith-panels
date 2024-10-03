@@ -62,7 +62,7 @@ mod test {
     use super::*;
 
     #[test]
-    fn test_panel_self_influence_null() {
+    fn panel_self_influence_null() {
         let panel = Panel {
             start: (0.0, 0.0),
             end: (1.0, 0.0),
@@ -74,7 +74,7 @@ mod test {
     }
 
     #[test]
-    fn test_panel_self_influence_null_tilted() {
+    fn panel_self_influence_null_tilted() {
         let panel = Panel {
             start: (1.5, 1.5),
             end: (2.5, 2.5),
@@ -86,7 +86,7 @@ mod test {
     }
 
     #[test]
-    fn test_panel_self_influence_null_vertical() {
+    fn panel_self_influence_null_vertical() {
         let panel = Panel {
             start: (0.0, 0.0),
             end: (0.0, 1.0),
@@ -98,7 +98,7 @@ mod test {
     }
 
     #[test]
-    fn test_panel_logical() {
+    fn panel_logical() {
         let panel = Panel {
             start: (0.0, 0.0),
             end: (1.0, 0.0),
@@ -138,7 +138,7 @@ mod test {
     }
 
     #[test]
-    fn test_panel_logical_vertical() {
+    fn panel_logical_vertical() {
         let panel = Panel {
             start: (0.0, 0.0),
             end: (0.0, 1.0),
