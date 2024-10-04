@@ -8,6 +8,7 @@ mod aero;
 mod geom;
 mod plots;
 mod points;
+mod single_panel;
 
 // Number of PANELS, point number is N + 1
 const N: usize = 70;
@@ -29,11 +30,18 @@ fn get_points() -> Vec<(f64, f64)> {
     [upper_resampled, lower_resampled].concat()
 }
 
+fn single_panel_cases() {
+    single_panel::single_panel_horizontal();
+    single_panel::single_panel_tilted();
+    single_panel::single_panel_backwards();
+}
+
 fn main() {
     let points = get_points();
     assert_eq!(points.len(), N + 1);
 
     if DO_PLOTS {
+        single_panel_cases();
         plots::geom::plot(&points);
     }
 }

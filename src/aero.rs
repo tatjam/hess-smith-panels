@@ -1,8 +1,8 @@
 use fa::modules::core::ComplexField;
 
 pub struct Panel {
-    start: (f64, f64),
-    end: (f64, f64),
+    pub start: (f64, f64),
+    pub end: (f64, f64),
 }
 
 impl Panel {
