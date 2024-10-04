@@ -8,6 +8,14 @@ pub struct Panel {
 impl Panel {
     // Induced velocity by panel on given point, assuming unitary source strength
     pub fn source_vel_at(&self, p: (f64, f64)) -> (f64, f64) {
+        // Avoid singularity
+        if approx::relative_eq!(p.0, self.start.0) && approx::relative_eq!(p.1, self.start.1) {
+            return (0.0, 0.0);
+        }
+        if approx::relative_eq!(p.0, self.end.0) && approx::relative_eq!(p.1, self.end.1) {
+            return (0.0, 0.0);
+        }
+
         let rstart = ((self.start.0 - p.0).powi(2) + (self.start.1 - p.1).powi(2)).sqrt();
         let rend = ((self.end.0 - p.0).powi(2) + (self.end.1 - p.1).powi(2)).sqrt();
         let len =
@@ -16,7 +24,7 @@ impl Panel {
         let lx = self.end.0 - self.start.0;
         let ly = self.end.1 - self.start.1;
 
-        // sin(arctan of (ly / lx)) approaches +- with lx approaching 0
+        // sin(arctan of (ly / lx)) approaches +-1 with lx approaching 0
         let sin_theta = if lx == 0.0 {
             if ly > 0.0 {
                 1.0
@@ -27,13 +35,13 @@ impl Panel {
             ly / ((1.0 + (ly * ly) / (lx * lx)).sqrt() * lx)
         };
         let cos_theta = 1.0 / ((1.0 + (ly * ly) / (lx * lx)).sqrt());
-        let ty = -p.0 * sin_theta + p.1 * cos_theta;
+        let ty = -(p.0 - self.start.0) * sin_theta + (p.1 - self.start.1) * cos_theta;
 
         let vel_parallel = (rstart / rend).sqrt().ln();
-        // TODO: Check if atan2 should be used
         let vel_perp = if approx::relative_eq!(ty, 0.0) {
             0.0
         } else {
+            // atan2 is incorrect in this case
             -(len / ty).atan()
         };
 
@@ -175,5 +183,45 @@ mod test {
         let vbottom = panel.source_vel_at((0.0, -1.0));
         approx::assert_relative_eq!(vbottom.0, 0.0);
         assert!(vbottom.1 < 0.0);
+    }
+
+    #[test]
+    fn panel_logical_reversed() {
+        let panel = Panel {
+            start: (1.0, 0.0),
+            end: (0.0, 0.0),
+        };
+
+        let vtop = panel.source_vel_at((0.5, 1.0));
+        approx::assert_relative_eq!(vtop.0, 0.0);
+        assert!(vtop.1 > 0.0);
+
+        let vbottom = panel.source_vel_at((0.5, -1.0));
+        approx::assert_relative_eq!(vtop.0, 0.0);
+        assert!(vbottom.1 < 0.0);
+
+        let vtopright = panel.source_vel_at((1.0, 1.0));
+        assert!(vtopright.0 > 0.0);
+        assert!(vtopright.1 > 0.0);
+
+        let vtopleft = panel.source_vel_at((0.0, 1.0));
+        assert!(vtopleft.0 < 0.0);
+        assert!(vtopleft.1 > 0.0);
+
+        let vbottomleft = panel.source_vel_at((0.0, -1.0));
+        assert!(vbottomleft.0 < 0.0);
+        assert!(vbottomleft.1 < 0.0);
+
+        let vbottomright = panel.source_vel_at((1.0, -1.0));
+        assert!(vbottomright.0 > 0.0);
+        assert!(vbottomright.1 < 0.0);
+
+        let vleft = panel.source_vel_at((-1.0, 0.0));
+        approx::assert_relative_eq!(vleft.1, 0.0);
+        assert!(vleft.0 < 0.0);
+
+        let vright = panel.source_vel_at((2.0, 0.0));
+        approx::assert_relative_eq!(vright.1, 0.0);
+        assert!(vright.0 > 0.0);
     }
 }
