@@ -33,8 +33,9 @@ fn get_points() -> Vec<(f64, f64)> {
 
 fn single_panel_cases() {
     visual_tests::single_panel::single_panel_horizontal();
-    visual_tests::single_panel::single_panel_tilted();
     visual_tests::single_panel::single_panel_backwards();
+    visual_tests::single_panel::single_panel_tilted();
+    visual_tests::single_panel::single_panel_tilted_backwards();
     visual_tests::single_panel::single_panel_vertical();
     visual_tests::single_panel::single_panel_vertical_backwards();
 }
@@ -49,7 +50,7 @@ fn main() {
     assert_eq!(points.len(), N + 1);
 
     if DO_PLOTS {
-        //single_panel_cases();
+        single_panel_cases();
         compound_cases();
         plots::geom::plot(&points);
     }

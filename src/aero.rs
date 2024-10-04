@@ -18,38 +18,36 @@ impl Panel {
 
         let rstart = ((self.start.0 - p.0).powi(2) + (self.start.1 - p.1).powi(2)).sqrt();
         let rend = ((self.end.0 - p.0).powi(2) + (self.end.1 - p.1).powi(2)).sqrt();
-        let len =
-            ((self.end.0 - self.start.0).powi(2) + (self.end.1 - self.start.1).powi(2)).sqrt();
 
         let lx = self.end.0 - self.start.0;
         let ly = self.end.1 - self.start.1;
+        let len = (lx * lx + ly * ly).sqrt();
 
-        // sin(arctan of (ly / lx)) approaches +-1 with lx approaching 0
-        let sin_theta = if lx == 0.0 {
-            if ly > 0.0 {
-                1.0
-            } else {
-                -1.0
-            }
-        } else {
-            ly / ((1.0 + (ly * ly) / (lx * lx)).sqrt() * lx)
-        };
-        let cos_theta = 1.0 / ((1.0 + (ly * ly) / (lx * lx)).sqrt());
+        let sin_theta = ly / len;
+        let cos_theta = lx / len;
+
+        let tx = (p.0 - self.start.0) * cos_theta + (p.1 - self.start.1) * sin_theta;
+        // y coordinate of point in panel coordinates. Obtained by rotating the point along
+        // the start of the panel by the negative panel angle
         let ty = -(p.0 - self.start.0) * sin_theta + (p.1 - self.start.1) * cos_theta;
 
         let vel_parallel = (rstart / rend).sqrt().ln();
         let vel_perp = if approx::relative_eq!(ty, 0.0) {
+            //std::f64::consts::FRAC_PI_2 * f64::signum(ty)
             0.0
         } else {
             // atan2 is incorrect in this case
-            -(len / ty).atan()
+            ((len - tx) / ty).atan() + (tx / ty).atan()
         };
 
-        // Transform back
+        // Transform back by rotating by the panel angle
         (
-            vel_parallel * cos_theta + vel_perp * sin_theta,
-            -vel_perp * cos_theta + vel_parallel * sin_theta,
+            vel_parallel * cos_theta - vel_perp * sin_theta,
+            vel_perp * cos_theta + vel_parallel * sin_theta,
         )
+        //(vel_parallel * cos_theta, vel_parallel * sin_theta)
+        //(-vel_perp * sin_theta, vel_perp * cos_theta)
+        //(cos_theta, sin_theta)
     }
 
     // Induced velocity by panel on given point, assuming unitary vortex strength

@@ -32,6 +32,20 @@ pub fn single_panel_tilted() {
     vector_field::plot_vector_field("tilted", vec_field, range, SCALE);
 }
 
+pub fn single_panel_tilted_backwards() {
+    let panel = aero::Panel {
+        start: (0.5, 0.5),
+        end: (-0.5, -0.5),
+    };
+    let range = ((-1.0, -1.0), (1.0, 1.0));
+    let samples = sample_points::sample_points(range.0, range.1);
+    let vec_field: Vec<_> = samples
+        .iter()
+        .map(|point| (*point, panel.source_vel_at(*point)))
+        .collect();
+    vector_field::plot_vector_field("tilted_backwards", vec_field, range, SCALE);
+}
+
 pub fn single_panel_backwards() {
     let panel = aero::Panel {
         start: (0.5, 0.0),

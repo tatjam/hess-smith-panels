@@ -29,6 +29,13 @@ pub fn plot_vector_field(
         }))
         .unwrap();
 
+    chart
+        .draw_series(
+            vecs.iter()
+                .map(|(pos, _)| Circle::new(*pos, 2, BLUE.filled())),
+        )
+        .unwrap();
+
     chart.configure_mesh().draw().unwrap();
 
     root.present().unwrap();
