@@ -1,5 +1,3 @@
-use fa::modules::core::ComplexField;
-
 pub struct Panel {
     pub start: (f64, f64),
     pub end: (f64, f64),
@@ -62,9 +60,21 @@ impl Panel {
             0.5 * (self.start.1 + self.end.1),
         )
     }
+
+    pub fn len(&self) -> f64 {
+        ((self.end.0 - self.start.0).powi(2) + (self.end.1 - self.start.1).powi(2)).sqrt()
+    }
+
+    pub fn normal(&self) -> (f64, f64) {
+        (
+            (-self.end.1 + self.start.1) / self.len(),
+            (self.end.0 - self.start.0) / self.len(),
+        )
+    }
 }
 
 mod test {
+    #[allow(unused_imports)]
     use super::*;
 
     #[test]
