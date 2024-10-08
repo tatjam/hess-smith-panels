@@ -29,14 +29,16 @@ impl Panel {
         // the start of the panel by the negative panel angle
         let ty = -(p.0 - self.start.0) * sin_theta + (p.1 - self.start.1) * cos_theta;
 
-        let vel_parallel = (rstart / rend).sqrt().ln();
-        let vel_perp = if approx::relative_eq!(ty, 0.0) {
-            //std::f64::consts::FRAC_PI_2 * f64::signum(ty)
-            0.0
-        } else {
-            // atan2 is incorrect in this case
-            ((len - tx) / ty).atan() + (tx / ty).atan()
-        };
+        let vel_parallel = 0.5 * std::f64::consts::FRAC_1_PI * (rstart / rend).sqrt().ln();
+        let vel_perp = 0.5
+            * std::f64::consts::FRAC_1_PI
+            * if approx::relative_eq!(ty, 0.0) {
+                //std::f64::consts::FRAC_PI_2 * f64::signum(ty)
+                0.0
+            } else {
+                // atan2 is incorrect in this case
+                ((len - tx) / ty).atan() + (tx / ty).atan()
+            };
 
         // Transform back by rotating by the panel angle
         (

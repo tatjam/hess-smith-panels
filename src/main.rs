@@ -1,4 +1,6 @@
 use aero::Panel;
+use fa::prelude::*;
+use fa::FaerMat;
 
 extern crate faer as fa;
 extern crate std;
@@ -80,7 +82,9 @@ fn main() {
 
     // Each row of the matrix represents an equation, each column an unknown
     // thus a (effect, cause) maps to (row, column)
+    let freestream = (1.0, 0.0);
     let mut mat = fa::Mat::<f64>::zeros(panels.len() + 1, panels.len() + 1);
+    let mut rhs = fa::Mat::<f64>::zeros(panels.len() + 1, 1);
     for (effect_idx, effect) in panels.iter().enumerate() {
         // Each panel has at its center the equation:
         // (sum of induced velocities + freestream) * normal = 0
@@ -101,7 +105,56 @@ fn main() {
             // Vortex is scaled by "global" vortex intensity
             mat[(panels.len(), cause_idx)] = vortex_dot;
         }
+
+        // Right hand side
+        rhs[(effect_idx, 0)] = -(freestream.0 * nrm.0 + freestream.1 * nrm.1);
     }
 
-    // Kutta condition on trailing edge
+    // Kutta condition on trailing edge, which implies that flow is parallel to it
+    // We may approximate it by considering the resulting velocity on the two
+    // trailing edge panels.
+    // TODO: Make sure both trailing edge panels are same length?
+    let top = &panels[0];
+    let bottom = &panels[panels.len() - 1];
+    let top_mp = top.midpoint();
+    let bottom_mp = bottom.midpoint();
+    let top_vec = (
+        (top.end.0 - top.start.0) / top.len(),
+        (top.end.1 - top.start.1) / top.len(),
+    );
+    let bottom_vec = (
+        (bottom.start.0 - bottom.end.0) / bottom.len(),
+        (bottom.start.1 - bottom.end.1) / bottom.len(),
+    );
+    for (cause_idx, cause) in panels.iter().enumerate() {
+        let v_source_top = cause.source_vel_at(top_mp);
+        let v_source_bottom = cause.source_vel_at(bottom_mp);
+        let v_vortex_top = cause.vortex_vel_at(top_mp);
+        let v_vortex_bottom = cause.vortex_vel_at(bottom_mp);
+
+        let source_cond = v_source_top.0 * top_vec.0
+            + v_source_top.1 * top_vec.1
+            + v_source_bottom.0 * bottom_vec.0
+            + v_source_bottom.1 * bottom_vec.1;
+
+        let vortex_cond = v_vortex_top.0 * top_vec.0
+            + v_vortex_top.1 * top_vec.1
+            + v_vortex_bottom.0 * bottom_vec.0
+            + v_vortex_bottom.1 * bottom_vec.1;
+
+        // Source condition for each panel
+        mat[(panels.len(), cause_idx)] = source_cond;
+        // Vortex condition summed, cummulative effect of all vortices
+        mat[(panels.len(), panels.len())] += vortex_cond;
+    }
+    // Freestream term, passed to right hand side, thus negative signs
+    rhs[(panels.len(), 0)] = -top_vec.0 * freestream.0
+        - top_vec.1 * freestream.1
+        - bottom_vec.0 * freestream.0
+        - bottom_vec.1 * freestream.1;
+
+    let plu = mat.partial_piv_lu();
+    let x = plu.solve(&rhs);
+
+    println!("{:?}", x);
 }
