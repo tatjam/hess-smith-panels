@@ -3,6 +3,9 @@ use fa::prelude::*;
 use fa::FaerMat;
 use sample_points::sample_points;
 
+extern crate plotters as pl;
+use plotters::prelude::*;
+
 extern crate faer as fa;
 extern crate std;
 
@@ -18,11 +21,11 @@ mod sample_points;
 mod visual_tests;
 
 // Number of PANELS, point number is N + 1
-const N: usize = 4;
+const N: usize = 50;
 const N_POINTS_UPPER: usize = N / 2 + 1;
 const N_POINTS_LOWER: usize = N / 2 + 1;
 const DO_PLOTS: bool = true;
-const DO_TESTS: bool = false;
+const DO_TESTS: bool = true;
 
 fn get_points() -> Vec<(f64, f64)> {
     let mut upper_resampled = geom::resample(&points::POINTS_UPPER, N_POINTS_UPPER);
@@ -102,8 +105,6 @@ fn vel_field_panel(
         .into_iter()
         .filter_map(|point| {
             let mut vel = get_vel_at(point, sol, panels, freestream);
-            vel.0 *= 0.1;
-            vel.1 *= 0.1;
             if vel.0 * vel.0 + vel.1 * vel.1 > 5.0 {
                 None
             } else {
@@ -124,8 +125,6 @@ fn vel_field_solved(
         .into_iter()
         .filter_map(|point| {
             let mut vel = get_vel_at(point, sol, panels, freestream);
-            vel.0 *= 0.1;
-            vel.1 *= 0.1;
             if vel.0 * vel.0 + vel.1 * vel.1 > 5.0 {
                 None
             } else {
@@ -175,93 +174,68 @@ fn main() {
         plots::vector_field::plot_vector_field("normals", nrms, (gmin, gmax), 0.1);*/
     }
 
-    let vstrength = 0.2;
+    for panel in &panels {
+        println!("{}", panel.theta());
+    }
+
     // Each row of the matrix represents an equation, each column an unknown
     // thus a (effect, cause) maps to (row, column)
-    let freestream = (1.0, 0.0);
+    let u_infty: f64 = 1.0;
+    let alpha: f64 = 0.0;
+    let freestream = (u_infty * alpha.cos(), u_infty * alpha.sin());
     let mut mat = fa::Mat::<f64>::zeros(panels.len() + 1, panels.len() + 1);
     let mut rhs = fa::Mat::<f64>::zeros(panels.len() + 1, 1);
     for (effect_idx, effect) in panels.iter().enumerate() {
         // Each panel has at its center the equation:
         // (sum of induced velocities + freestream) * normal = 0
         let nrm = effect.normal();
+        let theta_i = effect.theta();
         let midpoint = effect.midpoint();
+
         for (cause_idx, cause) in panels.iter().enumerate() {
-            let source = cause.source_vel_at(midpoint);
-            let vortex = cause.vortex_vel_at(midpoint);
+            let theta_j = cause.theta();
 
-            let source_dot = source.0 * nrm.0 + source.1 * nrm.1;
-            let vortex_dot = vortex.0 * nrm.0 + vortex.1 * nrm.1;
-
-            assert!(!f64::is_nan(source_dot));
-            assert!(!f64::is_nan(vortex_dot));
-            if cause_idx == effect_idx {
-                approx::assert_relative_eq!(source.0, 0.0, epsilon = 0.0000001);
-                approx::assert_relative_eq!(source.1, 0.0, epsilon = 0.0000001);
-                approx::assert_relative_eq!(vortex.0, 0.0, epsilon = 0.0000001);
-                approx::assert_relative_eq!(vortex.1, 0.0, epsilon = 0.0000001);
-            }
-
+            let params = cause.params_at(midpoint);
             // Source is scaled by sigma_cause (one for each panel)
-            mat[(effect_idx, cause_idx)] = source_dot;
+            mat[(effect_idx, cause_idx)] = 0.5
+                * std::f64::consts::FRAC_1_PI
+                * (params.0 * (theta_i - theta_j).sin() + params.1 * (theta_i - theta_j).cos());
             // Vortex is scaled by "global" vortex intensity
             // (cause panels.len() represents the vortex)
-            mat[(effect_idx, panels.len())] += vortex_dot;
+            mat[(effect_idx, panels.len())] += 0.5
+                * std::f64::consts::FRAC_1_PI
+                * (-params.1 * (theta_i - theta_j).sin() + params.0 * (theta_i - theta_j).cos());
         }
 
         // Right hand side
-        rhs[(effect_idx, 0)] = -(freestream.0 * nrm.0 + freestream.1 * nrm.1);
+        rhs[(effect_idx, 0)] = -u_infty * (alpha - theta_i).sin();
     }
 
-    // Kutta condition on trailing edge, which implies that flow is parallel to it
-    // We may approximate it by considering the resulting velocity on the two
-    // trailing edge panels.
-    // TODO: Make sure both trailing edge panels are same length?
-    /*let top = &panels[0];
-        let bottom = &panels[panels.len() - 1];
-        let top_mp = top.midpoint();
-        let bottom_mp = bottom.midpoint();
-        let top_vec = (
-            (top.end.0 - top.start.0) / top.len(),
-            (top.end.1 - top.start.1) / top.len(),
-        );
-        let bottom_vec = (
-            (bottom.start.0 - bottom.end.0) / bottom.len(),
-            (bottom.start.1 - bottom.end.1) / bottom.len(),
-        );
+    // Kutta condition
+    // TODO: Check this or the other way around
+    let top = panels.last().unwrap();
+    let bottom = panels.first().unwrap();
+    let theta_n = top.theta();
+    let theta_1 = bottom.theta();
+    for (cause_idx, cause) in panels.iter().enumerate() {
+        let params_n = cause.params_at(top.midpoint());
+        let params_1 = cause.params_at(bottom.midpoint());
+        let theta_j = cause.theta();
 
-        // TODO: Demonstrate that this is equivalent
-        for (cause_idx, cause) in panels.iter().enumerate() {
-            let v_source_top = cause.source_vel_at(top_mp);
-            let v_source_bottom = cause.source_vel_at(bottom_mp);
-            let v_vortex_top = cause.vortex_vel_at(top_mp);
-            let v_vortex_bottom = cause.vortex_vel_at(bottom_mp);
+        mat[(panels.len(), cause_idx)] =
+            0.5 * std::f64::consts::FRAC_1_PI * params_1.1 * (theta_1 - theta_j).sin()
+                - params_1.0 * (theta_1 - theta_j).cos()
+                + params_n.1 * (theta_n - theta_j).sin()
+                - params_n.0 * (theta_n - theta_j).cos();
 
-            let source_cond = v_source_top.0 * top_vec.0
-                + v_source_top.1 * top_vec.1
-                + v_source_bottom.0 * bottom_vec.0
-                + v_source_bottom.1 * bottom_vec.1;
+        mat[(panels.len(), panels.len())] +=
+            0.5 * std::f64::consts::FRAC_1_PI * params_1.1 * (theta_1 - theta_j).cos()
+                + params_1.0 * (theta_1 - theta_j).sin()
+                + params_n.1 * (theta_n - theta_j).cos()
+                + params_n.0 * (theta_n - theta_j).sin();
+    }
 
-            let vortex_cond = v_vortex_top.0 * top_vec.0
-                + v_vortex_top.1 * top_vec.1
-                + v_vortex_bottom.0 * bottom_vec.0
-                + v_vortex_bottom.1 * bottom_vec.1;
-
-            println!("{:?} {:?}", source_cond, vortex_cond);
-
-            // Source condition for each panel
-            mat[(panels.len(), cause_idx)] = source_cond;
-            // Vortex condition summed, cummulative effect of all vortices
-            mat[(panels.len(), panels.len())] += vortex_cond;
-        }
-        // Freestream term, passed to right hand side, thus negative signs
-        rhs[(panels.len(), 0)] = -top_vec.0 * freestream.0
-            - top_vec.1 * freestream.1
-            - bottom_vec.0 * freestream.0
-            - bottom_vec.1 * freestream.1;
-    */
-    mat[(panels.len(), panels.len())] = 1.0;
-    rhs[(panels.len(), 0)] = vstrength;
+    rhs[(panels.len(), 0)] = -u_infty * ((alpha - theta_1).cos() + (alpha - theta_n).cos());
 
     println!("{:?}", mat);
     println!("{:?}", rhs);
@@ -299,10 +273,31 @@ fn main() {
 
     println!("{:?}", x);
 
+    let mut cps: Vec<(f64, f64)> = Vec::new();
     for p in &panels {
+        let params = p.params_at((0.5, 0.0));
         let cvel = get_vel_at(p.midpoint(), &x, &panels, freestream);
         let nrm0 = cvel.0 * p.normal().0;
         let nrm1 = cvel.1 * p.normal().1;
         assert_relative_eq!(nrm0, -nrm1, max_relative = 0.001);
+
+        let tvelmag2 = cvel.0 * cvel.0 + cvel.1 * cvel.1;
+
+        let cpi = 1.0 - tvelmag2 / u_infty.powi(2);
+        cps.push((p.midpoint().0, params.1));
     }
+
+    let root = BitMapBackend::new("out/cps.png", (1024, 1024)).into_drawing_area();
+
+    root.fill(&WHITE).unwrap();
+
+    let mut chart = ChartBuilder::on(&root)
+        .margin(15)
+        .set_left_and_bottom_label_area_size(35)
+        .build_cartesian_2d(-0.2..1.2, -10.0..10.0)
+        .unwrap();
+
+    chart.draw_series(LineSeries::new(cps, &RED)).unwrap();
+
+    chart.configure_mesh().draw().unwrap();
 }

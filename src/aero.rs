@@ -4,56 +4,63 @@ pub struct Panel {
 }
 
 impl Panel {
-    // Induced velocity by panel on given point, assuming unitary source strength
-    pub fn source_vel_at(&self, p: (f64, f64)) -> (f64, f64) {
-        // Avoid singularity
-        /*if approx::relative_eq!(p.0, self.start.0) && approx::relative_eq!(p.1, self.start.1) {
+    pub fn theta(&self) -> f64 {
+        //((self.end.1 - self.start.1) / (self.end.0 - self.start.0)).atan()
+        //    + std::f64::consts::PI * 0.5
+        (self.end.1 - self.start.1).atan2(self.end.0 - self.start.0) /*+ std::f64::consts::PI * 0.5*/
+    }
+    pub fn params_at(&self, p: (f64, f64)) -> (f64, f64) {
+        if relative_eq!(0.5 * (self.start.0 + self.end.0), p.0)
+            && relative_eq!(0.5 * (self.start.1 + self.end.1), p.1)
+        {
             return (0.0, 0.0);
         }
-        if approx::relative_eq!(p.0, self.end.0) && approx::relative_eq!(p.1, self.end.1) {
-            return (0.0, 0.0);
-        }*/
 
-        let rstart = ((self.start.0 - p.0).powi(2) + (self.start.1 - p.1).powi(2)).sqrt();
-        let rend = ((self.end.0 - p.0).powi(2) + (self.end.1 - p.1).powi(2)).sqrt();
+        let r_ij1 = ((self.end.0 - p.0).powi(2) + (self.end.1 - p.1).powi(2)).sqrt();
+        let r_ij = ((self.start.0 - p.0).powi(2) + (self.start.1 - p.1).powi(2)).sqrt();
 
-        let lx = self.end.0 - self.start.0;
-        let ly = self.end.1 - self.start.1;
-        let len = (lx * lx + ly * ly).sqrt();
+        let betanum =
+            (p.1 - self.end.1) * (p.0 - self.start.0) - (p.0 - self.end.0) * (p.1 - self.start.1);
+        let betaden =
+            (p.0 - self.end.0) * (p.0 - self.start.0) + (p.1 - self.end.1) * (p.1 - self.start.1);
+        //let beta = (betanum / betaden).atan() + std::f64::consts::PI * 0.5;
+        //let beta = betanum.atan2(betaden) + std::f64::consts::PI * 0.5;
+        let beta = betanum.atan2(betaden) + std::f64::consts::PI * 0.5;
 
-        let sin_theta = ly / len;
-        let cos_theta = lx / len;
+        ((r_ij1 / r_ij).ln(), beta)
+    }
 
-        let tx = (p.0 - self.start.0) * cos_theta + (p.1 - self.start.1) * sin_theta;
-        // y coordinate of point in panel coordinates. Obtained by rotating the point along
-        // the start of the panel by the negative panel angle
-        let ty = -(p.0 - self.start.0) * sin_theta + (p.1 - self.start.1) * cos_theta;
+    // Induced velocity by panel on given point, assuming unitary source strength
+    // (U_M,ij W_M,ij)
+    pub fn source_vel_at(&self, p: (f64, f64)) -> (f64, f64) {
+        let params = self.params_at(p);
+        let theta_j = self.theta();
 
-        let vel_parallel = 0.5 * std::f64::consts::FRAC_1_PI * (rstart / rend).sqrt().ln();
-        let vel_perp = 0.5
-            * std::f64::consts::FRAC_1_PI
-            * if approx::relative_eq!(ty, 0.0) {
-                //std::f64::consts::FRAC_PI_2 * f64::signum(ty)
-                0.0
-            } else {
-                // atan2 is incorrect in this case
-                ((len - tx) / ty).atan() + (tx / ty).atan()
-            };
+        // Panel coordinates
+        let u_mij = -0.5 * std::f64::consts::FRAC_1_PI * params.0;
+        let w_mij = 0.5 * std::f64::consts::FRAC_1_PI * params.1;
 
-        // Transform back by rotating by the panel angle
-        (
-            vel_parallel * cos_theta - vel_perp * sin_theta,
-            vel_perp * cos_theta + vel_parallel * sin_theta,
-        )
-        //(vel_parallel * cos_theta, vel_parallel * sin_theta)
-        //(-vel_perp * sin_theta, vel_perp * cos_theta)
-        //(cos_theta, sin_theta)
+        // Global coordinates
+        let gu_mij = u_mij * theta_j.cos() - w_mij * theta_j.sin();
+        let gw_mij = u_mij * theta_j.sin() + w_mij * theta_j.cos();
+
+        (gu_mij, gw_mij)
     }
 
     // Induced velocity by panel on given point, assuming unitary vortex strength
     pub fn vortex_vel_at(&self, p: (f64, f64)) -> (f64, f64) {
-        let as_source = self.source_vel_at(p);
-        (-as_source.1, as_source.0)
+        let params = self.params_at(p);
+        let theta_j = self.theta();
+
+        // Panel coordinates
+        let u_tij = 0.5 * std::f64::consts::FRAC_1_PI * params.1;
+        let w_tij = 0.5 * std::f64::consts::FRAC_1_PI * params.0;
+
+        // Global coordinates
+        let gu_tij = u_tij * theta_j.cos() - w_tij * theta_j.sin();
+        let gw_tij = u_tij * theta_j.sin() + w_tij * theta_j.cos();
+
+        (gu_tij, gw_tij)
     }
 
     pub fn midpoint(&self) -> (f64, f64) {
