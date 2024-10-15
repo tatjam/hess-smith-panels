@@ -9,11 +9,11 @@ impl Panel {
         //    + std::f64::consts::PI * 0.5
         (self.end.1 - self.start.1).atan2(self.end.0 - self.start.0) /*+ std::f64::consts::PI * 0.5*/
     }
-    pub fn params_at(&self, p: (f64, f64)) -> (f64, f64) {
+    pub fn params_at(&self, p: (f64, f64)) -> (f64, f64, f64) {
         if relative_eq!(0.5 * (self.start.0 + self.end.0), p.0)
             && relative_eq!(0.5 * (self.start.1 + self.end.1), p.1)
         {
-            //assert!(false);
+            return (0.0, std::f64::consts::PI, 0.0);
         }
 
         let r_ij1 = ((self.end.0 - p.0).powi(2) + (self.end.1 - p.1).powi(2)).sqrt();
@@ -31,7 +31,7 @@ impl Panel {
         }*/
         let beta = betanum.atan2(betaden);
 
-        ((r_ij1 / r_ij).ln(), beta)
+        ((r_ij1 / r_ij).ln(), beta, 1.0)
     }
 
     // Induced velocity by panel on given point, assuming unitary source strength

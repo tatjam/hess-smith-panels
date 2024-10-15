@@ -21,7 +21,7 @@ mod sample_points;
 mod visual_tests;
 
 // Number of PANELS, point number is N + 1
-const N: usize = 50;
+const N: usize = 70;
 const N_POINTS_UPPER: usize = N / 2 + 1;
 const N_POINTS_LOWER: usize = N / 2 + 1;
 const DO_PLOTS: bool = true;
@@ -81,24 +81,17 @@ fn get_vel_at(
     for (idx, panel) in panels.iter().enumerate() {
         let source_strength = sol[(idx, 0)];
         let theta = panel.theta();
-        if approx::relative_eq!(panel.midpoint().0, at.0)
-            && approx::relative_eq!(panel.midpoint().1, at.1)
-        {
-            vel.0 += source_strength * (-0.5 * theta.sin());
-            vel.1 += source_strength * (0.5 * theta.cos());
-        } else {
-            let params = panel.params_at(at);
+        let params = panel.params_at(at);
 
-            let um_ij = -0.5 * std::f64::consts::FRAC_1_PI * params.0;
-            let wm_ij = 0.5 * std::f64::consts::FRAC_1_PI * params.1;
-            let ut_ij = 0.5 * std::f64::consts::FRAC_1_PI * params.1;
-            let wt_ij = 0.5 * std::f64::consts::FRAC_1_PI * params.0;
+        let um_ij = -0.5 * std::f64::consts::FRAC_1_PI * params.0;
+        let wm_ij = 0.5 * std::f64::consts::FRAC_1_PI * params.1;
+        let ut_ij = 0.5 * std::f64::consts::FRAC_1_PI * params.1;
+        let wt_ij = 0.5 * std::f64::consts::FRAC_1_PI * params.0;
 
-            vel.0 += source_strength * (um_ij * theta.cos() - wm_ij * theta.sin());
-            vel.1 += source_strength * (um_ij * theta.sin() + wm_ij * theta.cos());
-            vel.0 += vortex_strength * (ut_ij * theta.cos() - wt_ij * theta.sin());
-            vel.1 += vortex_strength * (ut_ij * theta.sin() + wt_ij * theta.cos());
-        }
+        vel.0 += source_strength * (um_ij * theta.cos() - wm_ij * theta.sin());
+        vel.1 += source_strength * (um_ij * theta.sin() + wm_ij * theta.cos());
+        vel.0 += vortex_strength * (ut_ij * theta.cos() - wt_ij * theta.sin()) * params.2;
+        vel.1 += vortex_strength * (ut_ij * theta.sin() + wt_ij * theta.cos()) * params.2;
     }
 
     vel
@@ -200,21 +193,17 @@ fn main() {
 
         for (cause_idx, cause) in panels.iter().enumerate() {
             let theta_j = cause.theta();
-            if cause_idx == effect_idx {
-                mat[(effect_idx, cause_idx)] = 0.5;
-            } else {
-                let params = cause.params_at(midpoint);
-                // Source is scaled by sigma_cause (one for each panel)
-                mat[(effect_idx, cause_idx)] = 0.5
-                    * std::f64::consts::FRAC_1_PI
-                    * (params.0 * (theta_i - theta_j).sin() + params.1 * (theta_i - theta_j).cos());
-                // Vortex is scaled by "global" vortex intensity
-                // (cause panels.len() represents the vortex)
-                mat[(effect_idx, panels.len())] += 0.5
-                    * std::f64::consts::FRAC_1_PI
-                    * (-params.1 * (theta_i - theta_j).sin()
-                        + params.0 * (theta_i - theta_j).cos());
-            }
+            let params = cause.params_at(midpoint);
+            // Source is scaled by sigma_cause (one for each panel)
+            mat[(effect_idx, cause_idx)] = 0.5
+                * std::f64::consts::FRAC_1_PI
+                * (params.0 * (theta_i - theta_j).sin() + params.1 * (theta_i - theta_j).cos());
+            // Vortex is scaled by "global" vortex intensity
+            // (cause panels.len() represents the vortex)
+            mat[(effect_idx, panels.len())] += 0.5
+                * std::f64::consts::FRAC_1_PI
+                * (-params.1 * (theta_i - theta_j).sin() + params.0 * (theta_i - theta_j).cos())
+                * params.2;
         }
 
         // Right hand side
@@ -240,10 +229,12 @@ fn main() {
 
         mat[(panels.len(), panels.len())] += 0.5
             * std::f64::consts::FRAC_1_PI
-            * (params_1.1 * (theta_1 - theta_j).cos()
-                + params_1.0 * (theta_1 - theta_j).sin()
-                + params_n.1 * (theta_n - theta_j).cos()
-                + params_n.0 * (theta_n - theta_j).sin());
+            * (params_1.1 * (theta_1 - theta_j).cos() + params_1.0 * (theta_1 - theta_j).sin())
+            * params_1.2;
+        mat[(panels.len(), panels.len())] += 0.5
+            * std::f64::consts::FRAC_1_PI
+            * (params_n.1 * (theta_n - theta_j).cos() + params_n.0 * (theta_n - theta_j).sin())
+            * params_n.2;
     }
 
     rhs[(panels.len(), 0)] = -u_infty * ((alpha - theta_1).cos() + (alpha - theta_n).cos());
