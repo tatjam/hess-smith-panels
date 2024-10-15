@@ -7,12 +7,12 @@ impl Panel {
     // Induced velocity by panel on given point, assuming unitary source strength
     pub fn source_vel_at(&self, p: (f64, f64)) -> (f64, f64) {
         // Avoid singularity
-        if approx::relative_eq!(p.0, self.start.0) && approx::relative_eq!(p.1, self.start.1) {
+        /*if approx::relative_eq!(p.0, self.start.0) && approx::relative_eq!(p.1, self.start.1) {
             return (0.0, 0.0);
         }
         if approx::relative_eq!(p.0, self.end.0) && approx::relative_eq!(p.1, self.end.1) {
             return (0.0, 0.0);
-        }
+        }*/
 
         let rstart = ((self.start.0 - p.0).powi(2) + (self.start.1 - p.1).powi(2)).sqrt();
         let rend = ((self.end.0 - p.0).powi(2) + (self.end.1 - p.1).powi(2)).sqrt();
@@ -68,10 +68,9 @@ impl Panel {
     }
 
     pub fn normal(&self) -> (f64, f64) {
-        (
-            (-self.end.1 + self.start.1) / self.len(),
-            (self.end.0 - self.start.0) / self.len(),
-        )
+        let dir = ((self.end.0 - self.start.0), (self.end.1 - self.start.1));
+        let dir_nrm = (dir.0 / self.len(), dir.1 / self.len());
+        return (-dir_nrm.1, dir_nrm.0);
     }
 }
 

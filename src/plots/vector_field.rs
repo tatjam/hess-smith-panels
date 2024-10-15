@@ -10,7 +10,10 @@ pub fn plot_vector_field(
     let mut name_str: String = "out/".to_owned();
     name_str.push_str(name);
     name_str.push_str(".png");
-    let root = BitMapBackend::new(name_str.as_str(), (1024, 1024)).into_drawing_area();
+    // x / y, thus x = y * AR
+    let aspect_ratio = (range.1 .0 - range.0 .0) / (range.1 .1 - range.0 .1);
+    let root = BitMapBackend::new(name_str.as_str(), ((1024.0 * aspect_ratio) as u32, 1024))
+        .into_drawing_area();
 
     root.fill(&WHITE).unwrap();
 
@@ -23,7 +26,7 @@ pub fn plot_vector_field(
     chart
         .draw_series(vecs.iter().map(|((x0, y0), (dx, dy))| {
             PathElement::new(
-                vec![(*x0, *y0), (*x0 + *dx * scale, *y0 + *dy * scale)],
+                vec![(*x0, *y0), (*x0 + (*dx * scale), *y0 + (*dy * scale))],
                 BLUE.stroke_width(2),
             )
         }))

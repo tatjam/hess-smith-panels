@@ -3,7 +3,9 @@ extern crate plotters as pl;
 use plotters::prelude::*;
 
 pub fn plot(pts: &[(f64, f64)]) {
-    let root = SVGBackend::new("out/geom.svg", (1024, 600)).into_drawing_area();
+    let aspect_ratio = (1.5 - -0.5) / (0.2 - -0.15);
+    let root = BitMapBackend::new("out/geom.png", ((1024.0 * aspect_ratio) as u32, 1024))
+        .into_drawing_area();
     root.fill(&WHITE).unwrap();
 
     let mut chart = ChartBuilder::on(&root)

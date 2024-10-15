@@ -2,7 +2,7 @@ use crate::aero;
 use crate::plots::vector_field;
 use crate::sample_points;
 
-const SCALE: f64 = 0.025;
+const SCALE: f64 = 0.05;
 
 pub fn single_panel_horizontal() {
     let panel = aero::Panel {
