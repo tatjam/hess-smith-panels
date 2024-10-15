@@ -13,7 +13,7 @@ pub fn single_panel_horizontal() {
     let samples = sample_points::sample_points(range.0, range.1);
     let vec_field: Vec<_> = samples
         .iter()
-        .map(|point| (*point, panel.source_vel_at(*point)))
+        .map(|point| (*point, panel.vortex_vel_at(*point)))
         .collect();
     vector_field::plot_vector_field("horizontal", vec_field, range, SCALE);
 }
@@ -27,7 +27,7 @@ pub fn single_panel_tilted() {
     let samples = sample_points::sample_points(range.0, range.1);
     let vec_field: Vec<_> = samples
         .iter()
-        .map(|point| (*point, panel.source_vel_at(*point)))
+        .map(|point| (*point, panel.vortex_vel_at(*point)))
         .collect();
     vector_field::plot_vector_field("tilted", vec_field, range, SCALE);
 }
@@ -41,7 +41,7 @@ pub fn single_panel_tilted_backwards() {
     let samples = sample_points::sample_points(range.0, range.1);
     let vec_field: Vec<_> = samples
         .iter()
-        .map(|point| (*point, panel.source_vel_at(*point)))
+        .map(|point| (*point, panel.vortex_vel_at(*point)))
         .collect();
     vector_field::plot_vector_field("tilted_backwards", vec_field, range, SCALE);
 }
@@ -55,7 +55,7 @@ pub fn single_panel_backwards() {
     let samples = sample_points::sample_points(range.0, range.1);
     let vec_field: Vec<_> = samples
         .iter()
-        .map(|point| (*point, panel.source_vel_at(*point)))
+        .map(|point| (*point, panel.vortex_vel_at(*point)))
         .collect();
     vector_field::plot_vector_field("backwards", vec_field, range, SCALE);
 }
@@ -69,7 +69,7 @@ pub fn single_panel_vertical() {
     let samples = sample_points::sample_points(range.0, range.1);
     let vec_field: Vec<_> = samples
         .iter()
-        .map(|point| (*point, panel.source_vel_at(*point)))
+        .map(|point| (*point, panel.vortex_vel_at(*point)))
         .collect();
     vector_field::plot_vector_field("vertical", vec_field, range, SCALE);
 }
@@ -83,7 +83,7 @@ pub fn single_panel_vertical_backwards() {
     let samples = sample_points::sample_points(range.0, range.1);
     let vec_field: Vec<_> = samples
         .iter()
-        .map(|point| (*point, panel.source_vel_at(*point)))
+        .map(|point| (*point, panel.vortex_vel_at(*point)))
         .collect();
     vector_field::plot_vector_field("vertical_backwards", vec_field, range, SCALE);
 }

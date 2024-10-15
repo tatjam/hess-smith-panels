@@ -25,7 +25,7 @@ const N: usize = 50;
 const N_POINTS_UPPER: usize = N / 2 + 1;
 const N_POINTS_LOWER: usize = N / 2 + 1;
 const DO_PLOTS: bool = true;
-const DO_TESTS: bool = true;
+const DO_TESTS: bool = false;
 
 fn get_points() -> Vec<(f64, f64)> {
     let mut upper_resampled = geom::resample(&points::POINTS_UPPER, N_POINTS_UPPER);
@@ -36,7 +36,7 @@ fn get_points() -> Vec<(f64, f64)> {
     approx::assert_relative_eq!(upper_resampled[0].0, lower_resampled.last().unwrap().0);
     approx::assert_relative_eq!(upper_resampled[0].1, lower_resampled.last().unwrap().1);
 
-    // combine both, erasing shared element
+    // combine both, erasing shared element at leading edge
 
     [upper_resampled, lower_resampled].concat()
 }
@@ -80,15 +80,25 @@ fn get_vel_at(
     let vortex_strength = sol[(panels.len(), 0)];
     for (idx, panel) in panels.iter().enumerate() {
         let source_strength = sol[(idx, 0)];
-        let source_vel = panel.source_vel_at(at);
-        let vortex_vel = panel.vortex_vel_at(at);
+        let theta = panel.theta();
+        if approx::relative_eq!(panel.midpoint().0, at.0)
+            && approx::relative_eq!(panel.midpoint().1, at.1)
+        {
+            vel.0 += source_strength * (-0.5 * theta.sin());
+            vel.1 += source_strength * (0.5 * theta.cos());
+        } else {
+            let params = panel.params_at(at);
 
-        vel.0 += source_vel.0 * source_strength + vortex_vel.0 * vortex_strength;
-        vel.1 += source_vel.1 * source_strength + vortex_vel.1 * vortex_strength;
-        //vel.0 += source_vel.0;
-        //vel.1 += source_vel.1;
-        //vel.0 += vortex_vel.0;
-        //vel.1 += vortex_vel.1;
+            let um_ij = -0.5 * std::f64::consts::FRAC_1_PI * params.0;
+            let wm_ij = 0.5 * std::f64::consts::FRAC_1_PI * params.1;
+            let ut_ij = 0.5 * std::f64::consts::FRAC_1_PI * params.1;
+            let wt_ij = 0.5 * std::f64::consts::FRAC_1_PI * params.0;
+
+            vel.0 += source_strength * (um_ij * theta.cos() - wm_ij * theta.sin());
+            vel.1 += source_strength * (um_ij * theta.sin() + wm_ij * theta.cos());
+            vel.0 += vortex_strength * (ut_ij * theta.cos() - wt_ij * theta.sin());
+            vel.1 += vortex_strength * (ut_ij * theta.sin() + wt_ij * theta.cos());
+        }
     }
 
     vel
@@ -174,10 +184,6 @@ fn main() {
         plots::vector_field::plot_vector_field("normals", nrms, (gmin, gmax), 0.1);*/
     }
 
-    for panel in &panels {
-        println!("{}", panel.theta());
-    }
-
     // Each row of the matrix represents an equation, each column an unknown
     // thus a (effect, cause) maps to (row, column)
     let u_infty: f64 = 1.0;
@@ -194,17 +200,21 @@ fn main() {
 
         for (cause_idx, cause) in panels.iter().enumerate() {
             let theta_j = cause.theta();
-
-            let params = cause.params_at(midpoint);
-            // Source is scaled by sigma_cause (one for each panel)
-            mat[(effect_idx, cause_idx)] = 0.5
-                * std::f64::consts::FRAC_1_PI
-                * (params.0 * (theta_i - theta_j).sin() + params.1 * (theta_i - theta_j).cos());
-            // Vortex is scaled by "global" vortex intensity
-            // (cause panels.len() represents the vortex)
-            mat[(effect_idx, panels.len())] += 0.5
-                * std::f64::consts::FRAC_1_PI
-                * (-params.1 * (theta_i - theta_j).sin() + params.0 * (theta_i - theta_j).cos());
+            if cause_idx == effect_idx {
+                mat[(effect_idx, cause_idx)] = 0.5;
+            } else {
+                let params = cause.params_at(midpoint);
+                // Source is scaled by sigma_cause (one for each panel)
+                mat[(effect_idx, cause_idx)] = 0.5
+                    * std::f64::consts::FRAC_1_PI
+                    * (params.0 * (theta_i - theta_j).sin() + params.1 * (theta_i - theta_j).cos());
+                // Vortex is scaled by "global" vortex intensity
+                // (cause panels.len() represents the vortex)
+                mat[(effect_idx, panels.len())] += 0.5
+                    * std::f64::consts::FRAC_1_PI
+                    * (-params.1 * (theta_i - theta_j).sin()
+                        + params.0 * (theta_i - theta_j).cos());
+            }
         }
 
         // Right hand side
@@ -222,17 +232,18 @@ fn main() {
         let params_1 = cause.params_at(bottom.midpoint());
         let theta_j = cause.theta();
 
-        mat[(panels.len(), cause_idx)] =
-            0.5 * std::f64::consts::FRAC_1_PI * params_1.1 * (theta_1 - theta_j).sin()
-                - params_1.0 * (theta_1 - theta_j).cos()
+        mat[(panels.len(), cause_idx)] = 0.5
+            * std::f64::consts::FRAC_1_PI
+            * (params_1.1 * (theta_1 - theta_j).sin() - params_1.0 * (theta_1 - theta_j).cos()
                 + params_n.1 * (theta_n - theta_j).sin()
-                - params_n.0 * (theta_n - theta_j).cos();
+                - params_n.0 * (theta_n - theta_j).cos());
 
-        mat[(panels.len(), panels.len())] +=
-            0.5 * std::f64::consts::FRAC_1_PI * params_1.1 * (theta_1 - theta_j).cos()
+        mat[(panels.len(), panels.len())] += 0.5
+            * std::f64::consts::FRAC_1_PI
+            * (params_1.1 * (theta_1 - theta_j).cos()
                 + params_1.0 * (theta_1 - theta_j).sin()
                 + params_n.1 * (theta_n - theta_j).cos()
-                + params_n.0 * (theta_n - theta_j).sin();
+                + params_n.0 * (theta_n - theta_j).sin());
     }
 
     rhs[(panels.len(), 0)] = -u_infty * ((alpha - theta_1).cos() + (alpha - theta_n).cos());
@@ -244,7 +255,7 @@ fn main() {
     let x = plu.solve(&rhs);
 
     if DO_PLOTS {
-        let vel_field = vel_field_solved(&x, &panels, freestream);
+        let vel_field = vel_field_panel(&x, &panels, freestream);
         plots::vector_field::plot_vector_field(
             "velfield",
             vel_field,
@@ -252,7 +263,7 @@ fn main() {
             0.05,
         );
 
-        let NUM_STREAMLINES = 150;
+        let NUM_STREAMLINES = 50;
         let stream_start: Vec<(f64, f64)> = (0..NUM_STREAMLINES)
             .into_iter()
             .map(|i| (i as f64) / (NUM_STREAMLINES as f64))
@@ -271,11 +282,9 @@ fn main() {
         );
     }
 
-    println!("{:?}", x);
-
     let mut cps: Vec<(f64, f64)> = Vec::new();
     for p in &panels {
-        let params = p.params_at((0.5, 0.0));
+        let params = p.params_at((0.0, 0.1));
         let cvel = get_vel_at(p.midpoint(), &x, &panels, freestream);
         let nrm0 = cvel.0 * p.normal().0;
         let nrm1 = cvel.1 * p.normal().1;
@@ -284,7 +293,7 @@ fn main() {
         let tvelmag2 = cvel.0 * cvel.0 + cvel.1 * cvel.1;
 
         let cpi = 1.0 - tvelmag2 / u_infty.powi(2);
-        cps.push((p.midpoint().0, params.1));
+        cps.push((p.midpoint().0, -cpi));
     }
 
     let root = BitMapBackend::new("out/cps.png", (1024, 1024)).into_drawing_area();
@@ -294,7 +303,7 @@ fn main() {
     let mut chart = ChartBuilder::on(&root)
         .margin(15)
         .set_left_and_bottom_label_area_size(35)
-        .build_cartesian_2d(-0.2..1.2, -10.0..10.0)
+        .build_cartesian_2d(-0.2..1.2, -2.0..1.5)
         .unwrap();
 
     chart.draw_series(LineSeries::new(cps, &RED)).unwrap();

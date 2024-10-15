@@ -13,7 +13,7 @@ impl Panel {
         if relative_eq!(0.5 * (self.start.0 + self.end.0), p.0)
             && relative_eq!(0.5 * (self.start.1 + self.end.1), p.1)
         {
-            return (0.0, 0.0);
+            //assert!(false);
         }
 
         let r_ij1 = ((self.end.0 - p.0).powi(2) + (self.end.1 - p.1).powi(2)).sqrt();
@@ -25,7 +25,11 @@ impl Panel {
             (p.0 - self.end.0) * (p.0 - self.start.0) + (p.1 - self.end.1) * (p.1 - self.start.1);
         //let beta = (betanum / betaden).atan() + std::f64::consts::PI * 0.5;
         //let beta = betanum.atan2(betaden) + std::f64::consts::PI * 0.5;
-        let beta = betanum.atan2(betaden) + std::f64::consts::PI * 0.5;
+        /*let mut beta = (betanum / betaden).atan() + std::f64::consts::PI * 0.5;
+        if betanum < 0.0 {
+            beta = -beta;
+        }*/
+        let beta = betanum.atan2(betaden);
 
         ((r_ij1 / r_ij).ln(), beta)
     }
