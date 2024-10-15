@@ -90,7 +90,7 @@ mod test {
     use super::*;
 
     #[test]
-    fn panel_self_influence_null() {
+    fn panel_self_influence() {
         let panel = Panel {
             start: (0.0, 0.0),
             end: (1.0, 0.0),
@@ -98,30 +98,29 @@ mod test {
 
         let vcenter = panel.source_vel_at((0.5, 0.0));
         approx::assert_relative_eq!(vcenter.0, 0.0);
-        approx::assert_relative_eq!(vcenter.1, 0.0);
+        approx::assert_relative_eq!(vcenter.1, 0.5);
     }
 
     #[test]
-    fn panel_self_influence_null_tilted() {
+    fn panel_self_influence_tilted() {
         let panel = Panel {
             start: (1.5, 1.5),
             end: (2.5, 2.5),
         };
 
         let vcenter = panel.source_vel_at((2.0, 2.0));
-        approx::assert_relative_eq!(vcenter.0, 0.0);
-        approx::assert_relative_eq!(vcenter.1, 0.0);
+        approx::assert_relative_eq!(vcenter.0, -vcenter.1);
     }
 
     #[test]
-    fn panel_self_influence_null_vertical() {
+    fn panel_self_influence_vertical() {
         let panel = Panel {
             start: (0.0, 0.0),
             end: (0.0, 1.0),
         };
 
         let vcenter = panel.source_vel_at((0.0, 0.5));
-        approx::assert_relative_eq!(vcenter.0, 0.0);
+        approx::assert_relative_eq!(vcenter.0, -0.5);
         approx::assert_relative_eq!(vcenter.1, 0.0);
     }
 
