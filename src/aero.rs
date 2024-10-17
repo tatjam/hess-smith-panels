@@ -61,8 +61,8 @@ impl Panel {
         let w_tij = 0.5 * std::f64::consts::FRAC_1_PI * params.0;
 
         // Global coordinates
-        let gu_tij = u_tij * theta_j.cos() - w_tij * theta_j.sin();
-        let gw_tij = u_tij * theta_j.sin() + w_tij * theta_j.cos();
+        let gu_tij = (u_tij * theta_j.cos() - w_tij * theta_j.sin()) * params.2;
+        let gw_tij = (u_tij * theta_j.sin() + w_tij * theta_j.cos()) * params.2;
 
         (gu_tij, gw_tij)
     }

@@ -80,18 +80,12 @@ fn get_vel_at(
     let vortex_strength = sol[(panels.len(), 0)];
     for (idx, panel) in panels.iter().enumerate() {
         let source_strength = sol[(idx, 0)];
-        let theta = panel.theta();
-        let params = panel.params_at(at);
 
-        let um_ij = -0.5 * std::f64::consts::FRAC_1_PI * params.0;
-        let wm_ij = 0.5 * std::f64::consts::FRAC_1_PI * params.1;
-        let ut_ij = 0.5 * std::f64::consts::FRAC_1_PI * params.1;
-        let wt_ij = 0.5 * std::f64::consts::FRAC_1_PI * params.0;
+        let svel = panel.source_vel_at(at);
+        let tvel = panel.vortex_vel_at(at);
 
-        vel.0 += source_strength * (um_ij * theta.cos() - wm_ij * theta.sin());
-        vel.1 += source_strength * (um_ij * theta.sin() + wm_ij * theta.cos());
-        vel.0 += vortex_strength * (ut_ij * theta.cos() - wt_ij * theta.sin()) * params.2;
-        vel.1 += vortex_strength * (ut_ij * theta.sin() + wt_ij * theta.cos()) * params.2;
+        vel.0 += source_strength * svel.0 + vortex_strength * tvel.0;
+        vel.1 += source_strength * svel.1 + vortex_strength * tvel.1;
     }
 
     vel
@@ -137,11 +131,10 @@ fn vel_field_solved(
         .collect()
 }
 
-fn main() {
-    let points = get_points();
+fn find_plot_extremes(points: &Vec<(f64, f64)>) -> ((f64, f64), (f64, f64)) {
     let mut min = (0.0, 0.0);
     let mut max = (0.0, 0.0);
-    for point in &points {
+    for point in points {
         if point.0 < min.0 {
             min.0 = point.0
         }
@@ -157,7 +150,14 @@ fn main() {
     }
     let gmin = (min.0 - 0.1, min.1 - 0.1);
     let gmax = (max.0 + 0.1, max.1 + 0.1);
+    return (gmin, gmax);
+}
+
+fn main() {
+    let points = get_points();
     assert_eq!(points.len(), N + 1);
+
+    let (gmin, gmax) = find_plot_extremes(&points);
 
     if DO_PLOTS {
         if DO_TESTS {
@@ -170,11 +170,11 @@ fn main() {
     // Build the panels
     let panels = get_panels(&points);
     if DO_PLOTS {
-        /*let nrms: Vec<((f64, f64), (f64, f64))> = panels
+        let nrms: Vec<((f64, f64), (f64, f64))> = panels
             .iter()
             .map(|panel| (panel.midpoint(), panel.normal()))
             .collect();
-        plots::vector_field::plot_vector_field("normals", nrms, (gmin, gmax), 0.1);*/
+        plots::vector_field::plot_vector_field("normals", nrms, (gmin, gmax), 0.1);
     }
 
     // Each row of the matrix represents an equation, each column an unknown
@@ -185,9 +185,6 @@ fn main() {
     let mut mat = fa::Mat::<f64>::zeros(panels.len() + 1, panels.len() + 1);
     let mut rhs = fa::Mat::<f64>::zeros(panels.len() + 1, 1);
     for (effect_idx, effect) in panels.iter().enumerate() {
-        // Each panel has at its center the equation:
-        // (sum of induced velocities + freestream) * normal = 0
-        let nrm = effect.normal();
         let theta_i = effect.theta();
         let midpoint = effect.midpoint();
 
@@ -238,9 +235,6 @@ fn main() {
     }
 
     rhs[(panels.len(), 0)] = -u_infty * ((alpha - theta_1).cos() + (alpha - theta_n).cos());
-
-    println!("{:?}", mat);
-    println!("{:?}", rhs);
 
     let plu = mat.full_piv_lu();
     let x = plu.solve(&rhs);

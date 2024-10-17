@@ -1,3 +1,7 @@
+use fa::prelude::*;
+use fa::FaerMat;
+use fa::FaerMat;
+
 /// Returns (min, max) pair
 fn find_x_extremes(pts: &[(f64, f64)]) -> (f64, f64) {
     pts.iter()
@@ -29,6 +33,116 @@ pub fn find_containing_segment(pts: &[(f64, f64)], x: f64) -> Option<((f64, f64)
         }
     }
     return None;
+}
+
+pub struct SplineSegment {
+    t0: f64,
+    t1: f64,
+    a: f64,
+    b: f64,
+    c: f64,
+    d: f64,
+}
+
+pub fn sample_spline(spline: &Vec<SplineSegment>, x: f64) -> f64 {
+    for seg in spline.iter() {
+        if seg.t0 <= x && seg.t1 >= x {
+            return x.powi(3) * seg.a + x.powi(2) * seg.b + x.powi(1) * seg.c + seg.d;
+        }
+    }
+
+    assert!(false, "Segment outside spline");
+    return 0.0;
+}
+
+// Generates pts.len() - 1 spline segments, already solved
+pub fn find_spline(pts: &[(f64, f64)]) -> Vec<SplineSegment> {
+    assert!(pts.len() > 1);
+
+    let mut out = Vec::new();
+
+    // Build linear system
+    // (Each spline segment has 4 equations and 4 unknowns)
+    let mut mat = fa::Mat::zeros(4 * (pts.len() - 1), 4 * (pts.len() - 1));
+    let mut rhs = fa::Mat::zeros(4 * (pts.len() - 1), 1);
+
+    // Extreme segment, left second derivative null
+    // (1 equation)
+    mat[(0, 0)] = pts[0].0.powi(1);
+    mat[(0, 1)] = 2.0;
+    rhs[(0, 0)] = 0.0;
+
+    // Central segments
+    // 2 equations + 4 * (pts.len() - 1) = 4 * pts.len() - 2 equations
+    for i in 0..(pts.len() - 1) {
+        let eq_offset = i * 4 + 1;
+        let unknown_offset = i * 4;
+
+        // First equation: aX^3 + bX^2 + cX + d = Y
+        // Left continuity equation
+        mat[((eq_offset + 0), (unknown_offset + 0))] = pts[i].0.powi(3);
+        mat[((eq_offset + 0), (unknown_offset + 1))] = pts[i].0.powi(2);
+        mat[((eq_offset + 0), (unknown_offset + 2))] = pts[i].0.powi(1);
+        mat[((eq_offset + 0), (unknown_offset + 3))] = 1.0;
+        rhs[(eq_offset, 0)] = pts[i].1;
+
+        // Second equation a(X_next)^3 + b(X_next)^2 + c(X_next) + d = Y_next
+        // Right continuity equation
+        mat[((eq_offset + 1), (unknown_offset + 0))] = pts[i + 1].0.powi(3);
+        mat[((eq_offset + 1), (unknown_offset + 1))] = pts[i + 1].0.powi(2);
+        mat[((eq_offset + 1), (unknown_offset + 2))] = pts[i + 1].0.powi(1);
+        mat[((eq_offset + 1), (unknown_offset + 3))] = 1.0;
+        rhs[(eq_offset + 1, 0)] = pts[i + 1].1;
+
+        if i != 0 {
+            let prev_eq_unknown_offset = (i - 1) * 4;
+            // Third equation (first deriv continuity at the left)
+            // 3a_prev X^2 + 2b_prev X + c_prev = 3aX^2 + 2bX + c
+            // (Grouping terms on left side, as they are all non constants)
+            mat[((eq_offset + 2), (prev_eq_unknown_offset + 0))] = pts[i].0.powi(2);
+            mat[((eq_offset + 2), (prev_eq_unknown_offset + 1))] = pts[i].0.powi(1);
+            mat[((eq_offset + 2), (prev_eq_unknown_offset + 2))] = 1.0;
+            mat[((eq_offset + 2), (unknown_offset + 0))] = -pts[i].0.powi(2);
+            mat[((eq_offset + 2), (unknown_offset + 1))] = -pts[i].0.powi(1);
+            mat[((eq_offset + 2), (unknown_offset + 2))] = -1.0;
+            rhs[(eq_offset + 2, 0)] = 0.0;
+
+            // Third equation (second deriv continuity at the left)
+            // 6a_prev X + 2b_prev = 6aX + 2b
+            // (Grouping terms on left side, as they are all non constants)
+            mat[((eq_offset + 2), (prev_eq_unknown_offset + 0))] = pts[i].0.powi(1);
+            mat[((eq_offset + 2), (prev_eq_unknown_offset + 1))] = 2.0;
+            mat[((eq_offset + 2), (unknown_offset + 0))] = -pts[i].0.powi(1);
+            mat[((eq_offset + 2), (unknown_offset + 1))] = -2.0;
+            rhs[(eq_offset + 1, 0)] = 0.0;
+        }
+    }
+
+    // Extreme segment, right second derivative null
+    // 1 equation
+    assert_eq!(mat[(pts.len(), 0)], 0.0);
+    assert_eq!(mat[(pts.len(), 1)], 0.0);
+    assert_eq!(rhs[(pts.len(), 0)], 0.0);
+
+    mat[(pts.len(), 0)] = pts[pts.len() - 1].0.powi(1);
+    mat[(pts.len(), 1)] = 2.0;
+    rhs[(pts.len(), 0)] = 0.0;
+
+    let sol = mat.full_piv_lu().solve(rhs);
+
+    for i in 0..(pts.len() - 1) {
+        let seg = SplineSegment {
+            t0: pts[i].0,
+            t1: pts[i + 1].0,
+            a: sol[(i * 4 + 0, 0)],
+            b: sol[(i * 4 + 1, 0)],
+            c: sol[(i * 4 + 2, 0)],
+            d: sol[(i * 4 + 3, 0)],
+        };
+        out.push(seg);
+    }
+
+    return out;
 }
 
 /// Cosine sampling is used, to accumulate points near the leading and trialing edges
