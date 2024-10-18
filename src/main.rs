@@ -28,10 +28,10 @@ const DO_PLOTS: bool = true;
 const DO_TESTS: bool = false;
 
 fn get_points() -> Vec<(f64, f64)> {
-    let mut upper_resampled = geom::resample(&points::POINTS_UPPER, N_POINTS_UPPER, false);
+    let mut upper_resampled = geom::resample(&points::POINTS_UPPER, N_POINTS_UPPER, true);
     upper_resampled.reverse();
     upper_resampled.pop();
-    let lower_resampled = geom::resample(&points::POINTS_LOWER, N_POINTS_LOWER, false);
+    let lower_resampled = geom::resample(&points::POINTS_LOWER, N_POINTS_LOWER, true);
 
     //approx::assert_relative_eq!(upper_resampled[0].0, lower_resampled.last().unwrap().0);
     //approx::assert_relative_eq!(upper_resampled[0].1, lower_resampled.last().unwrap().1);
