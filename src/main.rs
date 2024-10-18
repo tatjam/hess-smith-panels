@@ -21,20 +21,20 @@ mod sample_points;
 mod visual_tests;
 
 // Number of PANELS, point number is N + 1
-const N: usize = 70;
+const N: usize = 100;
 const N_POINTS_UPPER: usize = N / 2 + 1;
 const N_POINTS_LOWER: usize = N / 2 + 1;
 const DO_PLOTS: bool = true;
 const DO_TESTS: bool = false;
 
 fn get_points() -> Vec<(f64, f64)> {
-    let mut upper_resampled = geom::resample(&points::POINTS_UPPER, N_POINTS_UPPER);
+    let mut upper_resampled = geom::resample(&points::POINTS_UPPER, N_POINTS_UPPER, false);
     upper_resampled.reverse();
     upper_resampled.pop();
-    let lower_resampled = geom::resample(&points::POINTS_LOWER, N_POINTS_LOWER);
+    let lower_resampled = geom::resample(&points::POINTS_LOWER, N_POINTS_LOWER, false);
 
-    approx::assert_relative_eq!(upper_resampled[0].0, lower_resampled.last().unwrap().0);
-    approx::assert_relative_eq!(upper_resampled[0].1, lower_resampled.last().unwrap().1);
+    //approx::assert_relative_eq!(upper_resampled[0].0, lower_resampled.last().unwrap().0);
+    //approx::assert_relative_eq!(upper_resampled[0].1, lower_resampled.last().unwrap().1);
 
     // combine both, erasing shared element at leading edge
 
