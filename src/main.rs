@@ -191,7 +191,7 @@ fn alpha_sweep() {
     // alpha, cL, cDi, cM in that order
     let mut points: Vec<(f64, f64, f64, f64)> = Vec::new();
     // A bunch of operating points
-    for alpha_deg in (-30.0..30.0).step(0.5).values() {
+    for alpha_deg in (-30.0..30.0).step(5.0).values() {
         let alpha = alpha_deg * std::f64::consts::PI / 180.0;
         let x = aero::hess_smith(&panels, u_infty, alpha);
 
@@ -203,42 +203,110 @@ fn alpha_sweep() {
         println!("alpha = {} cl={}, cdi={}, cm={}", alpha, cl, cdi, cm);
     }
 
-    let root = BitMapBackend::new("out/cl.png", (1024, 1024)).into_drawing_area();
+    {
+        let root = BitMapBackend::new("out/cl.png", (512, 512)).into_drawing_area();
 
-    root.fill(&WHITE).unwrap();
+        root.fill(&WHITE).unwrap();
 
-    let mut chart = ChartBuilder::on(&root)
-        .margin(15)
-        .set_left_and_bottom_label_area_size(35)
-        .build_cartesian_2d(-30.0..30.0, -4.0..4.0)
-        .unwrap();
+        let mut chart = ChartBuilder::on(&root)
+            .margin(15)
+            .set_left_and_bottom_label_area_size(35)
+            .build_cartesian_2d(-30.0..30.0, -4.0..4.0)
+            .unwrap();
 
-    chart
-        .draw_series(LineSeries::new(points.iter().map(|p| (p.0, p.1)), &RED))
-        .unwrap()
-        .label("cL (hess-smith)")
-        .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 10, y)], &RED));
+        chart
+            .draw_series(LineSeries::new(points.iter().map(|p| (p.0, p.1)), &RED))
+            .unwrap()
+            .label("cL (hess-smith)")
+            .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 10, y)], &RED));
 
-    chart
-        .draw_series(LineSeries::new(
-            points.iter().map(|p| {
-                (
-                    p.0,
-                    2.0 * std::f64::consts::PI * p.0 * std::f64::consts::PI / 180.0 + 0.203635,
-                )
-            }),
-            &BLUE,
-        ))
-        .unwrap()
-        .label("cL (2pi ideal)")
-        .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 10, y)], &BLUE));
+        chart
+            .draw_series(LineSeries::new(
+                points.iter().map(|p| {
+                    (
+                        p.0,
+                        2.0 * std::f64::consts::PI * p.0 * std::f64::consts::PI / 180.0 + 0.203635,
+                    )
+                }),
+                &BLUE,
+            ))
+            .unwrap()
+            .label("cL (2pi ideal)")
+            .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 10, y)], &BLUE));
 
-    chart.configure_mesh().draw().unwrap();
-    chart
-        .configure_series_labels()
-        .background_style(&WHITE)
-        .draw()
-        .unwrap();
+        chart
+            .configure_mesh()
+            .x_desc("alpha (deg)")
+            .y_desc("cL")
+            .draw()
+            .unwrap();
+
+        chart
+            .configure_series_labels()
+            .background_style(&WHITE)
+            .draw()
+            .unwrap()
+    }
+
+    {
+        let root = BitMapBackend::new("out/cdi.png", (512, 512)).into_drawing_area();
+
+        root.fill(&WHITE).unwrap();
+
+        let mut chart = ChartBuilder::on(&root)
+            .margin(15)
+            .set_left_and_bottom_label_area_size(35)
+            .build_cartesian_2d(-30.0..30.0, -0.005..0.012)
+            .unwrap();
+
+        chart
+            .draw_series(LineSeries::new(points.iter().map(|p| (p.0, p.2)), &RED))
+            .unwrap()
+            .label("cDi (hess-smith)")
+            .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 10, y)], &RED));
+
+        chart
+            .configure_mesh()
+            .x_desc("alpha (deg)")
+            .y_desc("cDi")
+            .draw()
+            .unwrap();
+        chart
+            .configure_series_labels()
+            .background_style(&WHITE)
+            .draw()
+            .unwrap()
+    }
+
+    {
+        let root = BitMapBackend::new("out/cm.png", (512, 512)).into_drawing_area();
+
+        root.fill(&WHITE).unwrap();
+
+        let mut chart = ChartBuilder::on(&root)
+            .margin(15)
+            .set_left_and_bottom_label_area_size(35)
+            .build_cartesian_2d(-30.0..30.0, -0.12..0.05)
+            .unwrap();
+
+        chart
+            .draw_series(LineSeries::new(points.iter().map(|p| (p.0, p.3)), &RED))
+            .unwrap()
+            .label("cM (hess-smith)")
+            .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 10, y)], &RED));
+
+        chart
+            .configure_mesh()
+            .x_desc("alpha (deg)")
+            .y_desc("cM")
+            .draw()
+            .unwrap();
+        chart
+            .configure_series_labels()
+            .background_style(&WHITE)
+            .draw()
+            .unwrap()
+    }
 }
 
 fn main() {

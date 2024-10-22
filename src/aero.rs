@@ -203,8 +203,8 @@ pub fn find_coeffs(
             moment_point.1 - p.midpoint().1,
         );
         let panel_to_moment_len = (panel_to_moment.0.powi(2) + panel_to_moment.1.powi(2)).sqrt();
-        // TODO: cm
-        //cm += cpi * p.len() * panel_to_moment_len * ()
+        let delta_i = panel_to_moment.1.atan2(panel_to_moment.0);
+        cm -= cpi * p.len() * panel_to_moment_len * (delta_i - p.theta()).cos();
     }
 
     return (cl, cdi, cm);
