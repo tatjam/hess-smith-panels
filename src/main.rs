@@ -1,3 +1,5 @@
+use core::num;
+
 use aero::Panel;
 use sample_points::sample_points;
 
@@ -81,8 +83,8 @@ fn compound_cases() {
 }
 
 fn many_operating_points() {
-    let points = get_points(200);
-    assert_eq!(points.len(), 200 + 1);
+    let points = get_points(80);
+    assert_eq!(points.len(), 80 + 1);
 
     plots::geom::plot(&points);
 
@@ -151,8 +153,8 @@ fn operating_point(panels: &[Panel], points: &[(f64, f64)], u_infty: f64, alpha:
         cps.push((p.midpoint().0, cpi));
     }
 
-    let fname = format!("out/{}-cps.png", alpha);
-    let root = BitMapBackend::new(&fname, (1024, 1024)).into_drawing_area();
+    let fname = format!("out/{}-cps.svg", alpha);
+    let root = SVGBackend::new(&fname, (512, 512)).into_drawing_area();
 
     root.fill(&WHITE).unwrap();
 
@@ -179,7 +181,72 @@ fn operating_point(panels: &[Panel], points: &[(f64, f64)], u_infty: f64, alpha:
         .unwrap();
 }
 
-fn num_points_sweep() {}
+// We sweep cL for a certain angle of attack and plot the result in logarithmic axes
+fn num_points_sweep(aoa: f64) {
+    let mut data: Vec<(usize, f64)> = Vec::new();
+
+    let mut max_points = 0;
+    for i in 3..1000 {
+        // Only multiples of 50 over 200
+        if i > 200 && i % 50 != 0 {
+            continue;
+        }
+
+        println!("{}", i);
+        let n_points = i * 2;
+        max_points = n_points;
+        let points = get_points(n_points);
+        assert_eq!(points.len(), n_points + 1);
+
+        // Build the panels
+        let panels = get_panels(&points);
+        let nrms: Vec<((f64, f64), (f64, f64))> = panels
+            .iter()
+            .map(|panel| (panel.midpoint(), panel.normal()))
+            .collect();
+        plots::vector_field::plot_vector_field("normals", nrms, (PLOT_MIN, PLOT_MAX), 0.1);
+
+        let u_infty: f64 = 1.0;
+        let x = aero::hess_smith(&panels, u_infty, aoa);
+        let (cl, cdi, cm) = aero::find_coeffs(&panels, &x, u_infty, aoa, (0.0, 0.0));
+
+        data.push((n_points, cl));
+    }
+
+    {
+        let root = SVGBackend::new("out/num_points.svg", (512, 512)).into_drawing_area();
+
+        root.fill(&WHITE).unwrap();
+
+        let mut chart = ChartBuilder::on(&root)
+            .margin(15)
+            .set_left_and_bottom_label_area_size(35)
+            .build_cartesian_2d((0.0..1.0).log_scale(), 0.0..0.25)
+            .unwrap();
+
+        chart
+            .draw_series(LineSeries::new(
+                data.iter()
+                    .map(|(num_points, cl)| (1.0 / (*num_points as f64), *cl)),
+                &RED,
+            ))
+            .unwrap()
+            .label("cL (hess-smith)")
+            .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 10, y)], &RED));
+
+        chart
+            .configure_mesh()
+            .x_desc("1 / num_points")
+            .y_desc("cL")
+            .draw()
+            .unwrap();
+        chart
+            .configure_series_labels()
+            .background_style(&WHITE)
+            .draw()
+            .unwrap()
+    }
+}
 
 fn alpha_sweep() {
     let points = get_points(200);
@@ -204,7 +271,7 @@ fn alpha_sweep() {
     }
 
     {
-        let root = BitMapBackend::new("out/cl.png", (512, 512)).into_drawing_area();
+        let root = SVGBackend::new("out/cl.svg", (512, 512)).into_drawing_area();
 
         root.fill(&WHITE).unwrap();
 
@@ -249,7 +316,7 @@ fn alpha_sweep() {
     }
 
     {
-        let root = BitMapBackend::new("out/cdi.png", (512, 512)).into_drawing_area();
+        let root = SVGBackend::new("out/cdi.svg", (512, 512)).into_drawing_area();
 
         root.fill(&WHITE).unwrap();
 
@@ -279,7 +346,7 @@ fn alpha_sweep() {
     }
 
     {
-        let root = BitMapBackend::new("out/cm.png", (512, 512)).into_drawing_area();
+        let root = SVGBackend::new("out/cm.svg", (512, 512)).into_drawing_area();
 
         root.fill(&WHITE).unwrap();
 
@@ -317,4 +384,5 @@ fn main() {
     // An alpha sweep to plot characteristics over angle of attack
     alpha_sweep();
     many_operating_points();
+    num_points_sweep(0.0);
 }

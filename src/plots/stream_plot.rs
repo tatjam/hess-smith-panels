@@ -12,10 +12,10 @@ pub fn plot_stream_plot<F: Fn((f64, f64)) -> (f64, f64)>(
 ) {
     let mut name_str: String = "out/".to_owned();
     name_str.push_str(name);
-    name_str.push_str(".png");
+    name_str.push_str(".svg");
     // x / y, thus x = y * AR
     let aspect_ratio = (range.1 .0 - range.0 .0) / (range.1 .1 - range.0 .1);
-    let root = BitMapBackend::new(name_str.as_str(), ((1024.0 * aspect_ratio) as u32, 1024))
+    let root = SVGBackend::new(name_str.as_str(), ((512.0 * aspect_ratio) as u32, 512))
         .into_drawing_area();
 
     root.fill(&WHITE).unwrap();
