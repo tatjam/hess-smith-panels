@@ -37,8 +37,8 @@ pub fn plot_stream_plot<F: Fn((f64, f64)) -> (f64, f64)>(
             // Simple as it can be Euler integrator
             while t < et {
                 let (vx, vy) = sample_vel_fn((x, y));
-                x += vx * dt;
-                y += vy * dt;
+                x -= vx * dt;
+                y -= vy * dt;
 
                 t += dt;
                 out.push((x, y));

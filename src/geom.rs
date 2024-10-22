@@ -55,7 +55,9 @@ pub fn sample_spline(spline: &Vec<SplineSegment>, x: f64) -> f64 {
 }
 
 // Generates pts.len() - 1 spline segments, already solved
-pub fn find_spline(pts: &[(f64, f64)]) -> Vec<SplineSegment> {
+// If rounding != 0, instead of imposing y'' = 0 at the last point, it imposes
+// y' = rounding
+pub fn find_spline(pts: &[(f64, f64)], rounding: f64) -> Vec<SplineSegment> {
     assert!(pts.len() > 1);
 
     let mut out = Vec::new();
@@ -65,12 +67,20 @@ pub fn find_spline(pts: &[(f64, f64)]) -> Vec<SplineSegment> {
     let mut mat = fa::Mat::zeros(4 * (pts.len() - 1), 4 * (pts.len() - 1));
     let mut rhs = fa::Mat::zeros(4 * (pts.len() - 1), 1);
 
-    // Extreme segment, left second derivative null
-    // (1 equation)
-    mat[(0, 0)] = 6.0 * pts[0].0.powi(1);
-    mat[(0, 1)] = 2.0;
-    rhs[(0, 0)] = 0.0;
-
+    if (rounding == 0.0) {
+        // Extreme segment, left second derivative null
+        // (1 equation)
+        mat[(0, 0)] = 6.0 * pts[0].0.powi(1);
+        mat[(0, 1)] = 2.0;
+        rhs[(0, 0)] = 0.0;
+    } else {
+        // Extreme segment, first derivative set by rounding
+        // (1 equation)
+        mat[(0, 0)] = 3.0 * pts[0].0.powi(2);
+        mat[(0, 1)] = 2.0 * pts[0].0.powi(1);
+        mat[(0, 2)] = 1.0;
+        rhs[(0, 0)] = rounding;
+    }
     // Central segments
     for i in 0..(pts.len() - 1) {
         let eq_offset = if i == 0 {
@@ -156,14 +166,19 @@ pub fn find_spline(pts: &[(f64, f64)]) -> Vec<SplineSegment> {
 /// Cosine sampling is used, to accumulate points near the leading and trialing edges
 /// desired_n is the number of points to be placed
 /// Always keeps first and last points the same
-pub fn resample(pts: &[(f64, f64)], desired_n: usize, use_spline: bool) -> Vec<(f64, f64)> {
+pub fn resample(
+    pts: &[(f64, f64)],
+    desired_n: usize,
+    use_spline: bool,
+    rounding: f64,
+) -> Vec<(f64, f64)> {
     assert!(is_monotonically_increasing_in_x(pts));
 
     let (min, max) = find_x_extremes(pts);
     let mut out: Vec<(f64, f64)> = Vec::new();
 
     if use_spline {
-        let spline = find_spline(pts);
+        let spline = find_spline(pts, rounding);
         for n in 0..desired_n {
             let prog = (n as f64) / (desired_n as f64 - 1.0);
             let theta = prog * std::f64::consts::PI; // Theta goes from 0->PI
@@ -217,12 +232,13 @@ mod test {
         use std::f64::*;
 
         const N: usize = 10;
-        let resampled1 = resample(&[(0.0, 0.0), (1.0, 1.0)], N, false);
-        let resampled2 = resample(&[(0.0, 0.0), (0.5, 0.5), (1.0, 1.0)], N, false);
+        let resampled1 = resample(&[(0.0, 0.0), (1.0, 1.0)], N, false, 0.0);
+        let resampled2 = resample(&[(0.0, 0.0), (0.5, 0.5), (1.0, 1.0)], N, false, 0.0);
         let resampled3 = resample(
             &[(0.0, 0.0), (0.1, 0.1), (0.65, 0.65), (1.0, 1.0)],
             N,
             false,
+            0.0,
         );
 
         assert_eq!(resampled1.len(), N);
@@ -244,7 +260,7 @@ mod test {
     #[test]
     fn test_spline() {
         let pts = [(0.0, 0.0), (0.5, 0.5), (1.0, 1.0)];
-        let spline = find_spline(&pts);
+        let spline = find_spline(&pts, 0.0);
         assert_relative_eq!(sample_spline(&spline, 0.5), 0.5);
     }
 }
