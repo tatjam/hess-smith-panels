@@ -170,8 +170,8 @@ fn operating_point(panels: &[Panel], points: &[(f64, f64)], u_infty: f64, alpha:
     chart.draw_series(LineSeries::new(cps, &RED)).unwrap();
 
     let txt = format!("Alpha = {}deg", alpha * std::f64::consts::FRAC_1_PI * 180.0);
-    let txt_style = TextStyle::from(("sans-serif", 40).into_font()).color(&BLACK);
-    root.draw_text(&txt, &txt_style, (600, 200)).unwrap();
+    let txt_style = TextStyle::from(("sans-serif", 20).into_font()).color(&BLACK);
+    root.draw_text(&txt, &txt_style, (300, 50)).unwrap();
 
     chart
         .configure_mesh()
@@ -243,6 +243,7 @@ fn num_points_sweep(aoa: f64) {
         chart
             .configure_series_labels()
             .background_style(&WHITE)
+            .position(SeriesLabelPosition::LowerRight)
             .draw()
             .unwrap()
     }
