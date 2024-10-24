@@ -1,4 +1,4 @@
-const NUM_POINTS: isize = 100;
+const NUM_POINTS: isize = 20;
 
 pub fn sample_points(start: (f64, f64), end: (f64, f64)) -> Vec<(f64, f64)> {
     assert!(start.0 < end.0);

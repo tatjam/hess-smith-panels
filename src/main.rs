@@ -20,7 +20,7 @@ mod points;
 mod sample_points;
 mod visual_tests;
 
-const DO_TESTS: bool = false;
+const DO_TESTS: bool = true;
 const USE_ROUNDING: bool = false;
 
 const PLOT_MIN: (f64, f64) = (-0.1, -0.1);
@@ -83,8 +83,8 @@ fn compound_cases() {
 }
 
 fn many_operating_points() {
-    let points = get_points(80);
-    assert_eq!(points.len(), 80 + 1);
+    let points = get_points(200);
+    assert_eq!(points.len(), 200 + 1);
 
     plots::geom::plot(&points);
 
@@ -154,7 +154,7 @@ fn operating_point(panels: &[Panel], points: &[(f64, f64)], u_infty: f64, alpha:
     }
 
     let fname = format!("out/{}-cps.svg", alpha);
-    let root = SVGBackend::new(&fname, (512, 512)).into_drawing_area();
+    let root = SVGBackend::new(&fname, (350, 254)).into_drawing_area();
 
     root.fill(&WHITE).unwrap();
 
@@ -171,7 +171,7 @@ fn operating_point(panels: &[Panel], points: &[(f64, f64)], u_infty: f64, alpha:
 
     let txt = format!("Alpha = {}deg", alpha * std::f64::consts::FRAC_1_PI * 180.0);
     let txt_style = TextStyle::from(("sans-serif", 20).into_font()).color(&BLACK);
-    root.draw_text(&txt, &txt_style, (300, 50)).unwrap();
+    root.draw_text(&txt, &txt_style, (200, 50)).unwrap();
 
     chart
         .configure_mesh()
@@ -214,7 +214,7 @@ fn num_points_sweep(aoa: f64) {
     }
 
     {
-        let root = SVGBackend::new("out/num_points.svg", (512, 512)).into_drawing_area();
+        let root = SVGBackend::new("out/num_points.svg", (350, 350)).into_drawing_area();
 
         root.fill(&WHITE).unwrap();
 
@@ -272,7 +272,7 @@ fn alpha_sweep() {
     }
 
     {
-        let root = SVGBackend::new("out/cl.svg", (512, 512)).into_drawing_area();
+        let root = SVGBackend::new("out/cl.svg", (350, 350)).into_drawing_area();
 
         root.fill(&WHITE).unwrap();
 
@@ -317,7 +317,7 @@ fn alpha_sweep() {
     }
 
     {
-        let root = SVGBackend::new("out/cdi.svg", (512, 512)).into_drawing_area();
+        let root = SVGBackend::new("out/cdi.svg", (350, 350)).into_drawing_area();
 
         root.fill(&WHITE).unwrap();
 
@@ -347,7 +347,7 @@ fn alpha_sweep() {
     }
 
     {
-        let root = SVGBackend::new("out/cm.svg", (512, 512)).into_drawing_area();
+        let root = SVGBackend::new("out/cm.svg", (350, 350)).into_drawing_area();
 
         root.fill(&WHITE).unwrap();
 
