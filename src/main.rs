@@ -311,6 +311,7 @@ fn alpha_sweep() {
 
         chart
             .configure_series_labels()
+            .position(SeriesLabelPosition::LowerRight)
             .background_style(&WHITE)
             .draw()
             .unwrap()
@@ -330,17 +331,18 @@ fn alpha_sweep() {
         chart
             .draw_series(LineSeries::new(points.iter().map(|p| (p.0, p.2)), &RED))
             .unwrap()
-            .label("cDi (hess-smith)")
+            .label("cD (hess-smith)")
             .legend(|(x, y)| PathElement::new(vec![(x, y), (x + 10, y)], &RED));
 
         chart
             .configure_mesh()
             .x_desc("alpha (deg)")
-            .y_desc("cDi")
+            .y_desc("cD")
             .draw()
             .unwrap();
         chart
             .configure_series_labels()
+            .position(SeriesLabelPosition::UpperRight)
             .background_style(&WHITE)
             .draw()
             .unwrap()
@@ -371,6 +373,7 @@ fn alpha_sweep() {
             .unwrap();
         chart
             .configure_series_labels()
+            .position(SeriesLabelPosition::UpperRight)
             .background_style(&WHITE)
             .draw()
             .unwrap()
